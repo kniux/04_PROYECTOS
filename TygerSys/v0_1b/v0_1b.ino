@@ -9,7 +9,8 @@
   - 3 botones:
       - Con B1, el sistema entra a modo ajuste de la fecha y hora del RTC.
       - Con B3, el sistema entra a modo ajuste de las alarmas del RTC.
-      - Con B2 :              
+      - Con B2 :
+              - Se muestra la visualizan como están configuradas las alarmas
               - En modo ajuste, se incrementan los parametros correspondientes.
   - 1 buzzer para indicar la activacion de alguna alarma    
   - 1 RTC DS 3231, el cual contiene un sensor de temperatura con parte entera (MSB) y parte flotante (LSB)
@@ -19,7 +20,7 @@
 #include <TimerOne.h>
 #include <Wire.h>
 
-LiquidCrystal_I2C lcd(0x27, 20, 4);  
+LiquidCrystal_I2C lcd(0x27, 16, 2);  
  
 const int button1   =  5;                   
 const int button2   =  4;                   
@@ -29,10 +30,13 @@ const int LED_pin =  10;
  
 // Variables declaration
 bool alarm1_status, alarm2_status;
-char Time[]     = "  :  :  ",
-     calendar[] = "      /  /20  ",
-     alarm1[]   = "A1:   :  :00", alarm2[]   = "A2:   :  :00",
-     temperature[] = "T:   .   C";
+
+char Time[]     = "  :  :   ",
+     calendar[] = "        /  /20  ",
+     alarm1[]   = "A1:   :  :00 ",
+     alarm2[]   = "A2:   :  :00 ",
+  temperature[] = "T:    C";
+
 byte  i, second, minute, hour, day, date, month, year,
       alarm1_minute, alarm1_hour, alarm2_minute, alarm2_hour,
       status_reg;
@@ -97,6 +101,9 @@ void alarms_read_display(){                     // Función para leer y mostrar 
   alarm2[4]     = alarm2_hour   / 10  + 48;
   alarm1_status = bitRead(control_reg, 0);      // Leer el bit de habilitación de interrupción de la alarma 1 (A1IE) desde el registro de control del DS3231.
   alarm2_status = bitRead(control_reg, 1);      // Leer el bit de habilitación de interrupción de la alarma 2 (A2IE) desde el registro de control del DS3231.
+  
+   /*Control de la temperatura*/
+
   if(temperature_msb < 0){
     temperature_msb = abs(temperature_msb);
     temperature[2] = '-';
@@ -106,6 +113,9 @@ void alarms_read_display(){                     // Función para leer y mostrar 
   temperature_lsb >>= 6;
   temperature[4] = temperature_msb % 10  + 48;
   temperature[3] = temperature_msb / 10  + 48;
+  
+  /* Por cuestiones de espacio no tratar LSB de la temperatura*/
+  /*
   if(temperature_lsb == 0 || temperature_lsb == 2){
     temperature[7] = '0';
     if(temperature_lsb == 0) temperature[6] = '0';
@@ -116,39 +126,49 @@ void alarms_read_display(){                     // Función para leer y mostrar 
     if(temperature_lsb == 1) temperature[6] = '2';
     else                     temperature[6] = '7';
   }
-  temperature[8]  = 223;                        // El símbolo del grado es "°".
-  lcd.setCursor(10, 0);
+  */
+  temperature[5]  = 223;                        // El símbolo del grado es "°".  
+  lcd.setCursor(9, 0);
   lcd.print(temperature);                       // Mostrar temperatura
-  lcd.setCursor(0, 2);
-  lcd.print(alarm1);                            // Mostrar alarma 1
-  lcd.setCursor(17, 2);
-  if(alarm1_status)  lcd.print("ON ");          // Si A1IE = 1, imprimir 'ON'.
-  else               lcd.print("OFF");          // Si A1IE = 0, imprimir 'OFF'.
-  lcd.setCursor(0, 3);
-  lcd.print(alarm2);                            // Mostrar alarma 2
-  lcd.setCursor(17, 3);
-  if(alarm2_status)  lcd.print("ON ");          // Si A2IE = 1, imprimir 'ON'.
-  else               lcd.print("OFF");          // Si A2IE = 0, imprimir 'OFF'.
+
+// Mostrar alarmas meintras se presiona B2
+  while(!digitalRead(button2)){                 // wait press button 2, display alarms
+   while(true){
+    lcd.setCursor(0, 0);
+    lcd.print(alarm1);                            // Mostrar alarma 1
+    lcd.setCursor(13, 0);
+    if(alarm1_status)  lcd.print("ON ");          // Si A1IE = 1, imprimir 'ON'.
+    else               lcd.print("OFF");          // Si A1IE = 0, imprimir 'OFF'.
+    lcd.setCursor(0, 1);
+    lcd.print(alarm2);                            // Mostrar alarma 2
+    lcd.setCursor(13, 1);
+    if(alarm2_status)  lcd.print("ON ");          // Si A2IE = 1, imprimir 'ON'.
+    else               lcd.print("OFF");          // Si A2IE = 0, imprimir 'OFF'.
+      if(digitalRead(button2)) break;
+    }
+ }  
 }
-void calendar_display(){                        // Función para mostrar el calendario.
-  switch(day){
-    case 1:  strcpy(calendar, "Dom   /  /20  "); break;
-    case 2:  strcpy(calendar, "Lun   /  /20  "); break;
-    case 3:  strcpy(calendar, "Mar   /  /20  "); break;
-    case 4:  strcpy(calendar, "Mie   /  /20  "); break;
-    case 5:  strcpy(calendar, "Jue   /  /20  "); break;
-    case 6:  strcpy(calendar, "Vie   /  /20  "); break;
-    case 7:  strcpy(calendar, "Sab   /  /20  "); break;
-    default: strcpy(calendar, "Sab   /  /20  ");
+void calendar_display() {                       
+  switch (day) {
+    case 1:  strcpy(calendar, "Dom     /  /20  "); break;
+    case 2:  strcpy(calendar, "Lun     /  /20  "); break;
+    case 3:  strcpy(calendar, "Mar     /  /20  "); break;
+    case 4:  strcpy(calendar, "Mie     /  /20  "); break;
+    case 5:  strcpy(calendar, "Jue     /  /20  "); break;
+    case 6:  strcpy(calendar, "Vie     /  /20  "); break;
+    case 7:  strcpy(calendar, "Sab     /  /20  "); break;
+    default: strcpy(calendar, "Sab     /  /20  ");
   }
-  calendar[13] = year  % 10 + 48;
-  calendar[12] = year  / 10 + 48;
-  calendar[8]  = month % 10 + 48;
-  calendar[7]  = month / 10 + 48;
-  calendar[5]  = date  % 10 + 48;
-  calendar[4]  = date  / 10 + 48;
+  calendar[15] = year  % 10 + 48;
+  calendar[14] = year  / 10 + 48;
+  calendar[10]  = month % 10 + 48;
+  calendar[9]  = month / 10 + 48;
+  calendar[7]  = date  % 10 + 48;
+  calendar[6]  = date  / 10 + 48;
+  calendar[5]  = ' ';
+  calendar[4]  = ' ';
   lcd.setCursor(0, 1);
-  lcd.print(calendar);                          // Mostrar calendario
+  lcd.print(calendar);                          // Display calendar
 }
 void DS3231_display(){
   // Convertir decimal codificado en binario a decimal
@@ -203,11 +223,14 @@ byte edit(byte x, byte y, byte parameter){
         sprintf(text,"%02u", parameter);
         lcd.print(text);
       }
-      if(i >= 5){
-        DS3231_read();                          // Leer datos del DS3231
-        DS3231_display();                       // Mostrar la hora y el calendario del DS3231
-      }
-      delay(200);                              // Espera 200ms para evitar rebotes
+
+    /* Comentar para la version de  LCD 16x2 */
+    /*if(i >= 5){
+      DS3231_read();
+      DS3231_display();
+    }
+    */
+      delay(200);                               // Espera 200ms para evitar rebotes
     }
     lcd.setCursor(x, y);
     lcd.print("  ");                            // Dos espacios.
@@ -223,9 +246,13 @@ byte edit(byte x, byte y, byte parameter){
       lcd.print(text);
     }
     Blink();
-    if(i >= 5){
+    
+    /* Comentar para la version de  LCD 16x2 */
+    /*if(i >= 5){
       DS3231_read();
-      DS3231_display();}
+      DS3231_display();
+    }
+    */
     if((!digitalRead(button1) && i < 5) || (!digitalRead(button3) && i >= 5)){
       i++;                                      // Incrementa 'i' para el siguiente parámetro.
       return parameter;                         // Devolver el valor del parámetro y salir.
@@ -276,9 +303,9 @@ void loop() {
         if(!digitalRead(button1))               // Si el botón B1 es presionado
           break;
       }
-      date = edit(4, 1, date);                  // Editar fecha
-      month = edit(7, 1, month);                // Editar mes
-      year = edit(12, 1, year);                 // Editar año
+      date = edit(6, 1, date);                  // Editar fecha
+      month = edit(9, 1, month);                // Editar mes
+      year = edit(14, 1, year);                 // Editar año
       // Convertir decimal a BCD
       minute = ((minute / 10) << 4) + (minute % 10);
       hour = ((hour / 10) << 4) + (hour % 10);
@@ -300,20 +327,31 @@ void loop() {
       delay(200);
     }
     if(!digitalRead(button3)){                  // Si el botón B3 es presionado
-      while(!digitalRead(button3));             // Espera hasta que el botón B3 sea liberado.
+      while(!digitalRead(button3));             // Espera hasta que el botón B3 sea liberado.      
+        /* Se visualizan las alarmas en lo que se editan*/
+        lcd.setCursor(0, 0);
+        lcd.print(alarm1);                            // Display alarm1
+        lcd.setCursor(13, 0);
+        if (alarm1_status)  lcd.print("ON ");        // If A1IE = 1 print 'ON'
+        else                lcd.print("OFF");        // If A1IE = 0 print 'OFF'
+        lcd.setCursor(0, 1);
+        lcd.print(alarm2);                            // Display alarm2
+        lcd.setCursor(13, 1);
+        if (alarm2_status)  lcd.print("ON ");        // If A2IE = 1 print 'ON'
+        else                lcd.print("OFF");        // If A2IE = 0 print 'OFF'         
       i = 5;
-      alarm1_hour   = edit(4,  2, alarm1_hour);
-      alarm1_minute = edit(7,  2, alarm1_minute);
-      alarm1_status = edit(17, 2, alarm1_status);
+      alarm1_hour   = edit(4,  0, alarm1_hour);
+      alarm1_minute = edit(7,  0, alarm1_minute);
+      alarm1_status = edit(13, 0, alarm1_status);
       i = 5;
-      alarm2_hour   = edit(4,  3, alarm2_hour);
-      alarm2_minute = edit(7,  3, alarm2_minute);
-      alarm2_status = edit(17, 3, alarm2_status);
+      alarm2_hour   = edit(4,  1, alarm2_hour);
+      alarm2_minute = edit(7,  1, alarm2_minute);
+      alarm2_status = edit(13, 1, alarm2_status);
       alarm1_minute = ((alarm1_minute / 10) << 4) + (alarm1_minute % 10);
       alarm1_hour   = ((alarm1_hour   / 10) << 4) + (alarm1_hour % 10);
       alarm2_minute = ((alarm2_minute / 10) << 4) + (alarm2_minute % 10);
       alarm2_hour   = ((alarm2_hour   / 10) << 4) + (alarm2_hour % 10);
-      // Write alarms data to DS3231
+      // Escribe los datos de la alarma al DS3231
       Wire.beginTransmission(0x68);               // Inicia el protocolo I2C con la dirección DS3231.
       Wire.write(7);                              // Enviar dirección del registro (segundos de alarma 1).
       Wire.write(0);                              // Escribir 0 en los segundos de la alarma 1.
@@ -333,7 +371,7 @@ void loop() {
       digitalWrite(LED_pin, LOW);               // Apagar el indicador de alarma.
       Wire.beginTransmission(0x68);               // Iniciar el protocolo I2C con la dirección del DS3231.
       Wire.write(0x0E);                           // Enviar la dirección del registro (registro de control).
-      // Write data to control register (Turn OFF the occurred alarm and keep the other as it is)
+      // Escribir datos en el registro de control (Apagar la alarma ocurrida y mantener las otras como están)
       Wire.write(4 | (!bitRead(status_reg, 0) & alarm1_status) | ((!bitRead(status_reg, 1) & alarm2_status) << 1));
       Wire.write(0);                              // Clear alarm flag bits
       Wire.endTransmission();                     // Detener la transmisión y liberar el bus I2C.
